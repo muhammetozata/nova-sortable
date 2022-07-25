@@ -12,6 +12,7 @@ class SortableController
     {
         $validationResult = $this->validateRequest($request);
         $model = $validationResult->model;
+        $modelTable = $model->getTable();;
 
         $resourceName = $request->route('resource');
         $resourceIds = $request->input('resourceIds');
@@ -28,9 +29,11 @@ class SortableController
         // Relationship sorting
         if (!empty($viaResource)) {
             $resourceClass = Nova::resourceForKey($viaResource);
-            if (empty($resourceClass)) return response()->json(['resourceName' => 'invalid'], 400);
 
+            if (empty($resourceClass)) return response()->json(['resourceName' => 'invalid'], 400);
             $modelClass = $resourceClass::$model;
+
+
             $model = $modelClass::find($viaResourceId);
             $relatedModels = $model->{$viaRelationship}()->findMany($resourceIds);
             if ($relatedModels->count() !== sizeof($resourceIds)) return response()->json(['resourceIds' => 'invalid'], 400);
@@ -82,8 +85,10 @@ class SortableController
                     $relatedModelsCopy = $relatedModelsCopy->forget($relatedModelsCopy->search($_model));
                     $sortOrderNr = $sortedOrder[$i];
 
-                    $_model->{$orderColumnName} = $sortOrderNr;
-                    $_model->save();
+                    $model->{$viaRelationship}()->where("{$modelTable}.{$relatedKeyName}", $id)
+                        ->update([
+                            "$orderColumnName" => $sortOrderNr,
+                        ]);
                 }
             }
 
